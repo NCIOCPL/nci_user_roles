@@ -1,0 +1,341 @@
+<?php
+
+/*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+function nci_user_roles_install() {
+    
+}
+
+function nci_user_roles_uninstall() {
+    
+}
+
+function nci_user_roles_enable() {
+    // map role names to permission functions
+    $role_permission_map = array(
+        'anonymous user' => 'get_anonymous_user_permissions',
+        'authenticated user' => 'get_authenticated_user_permissions',
+        'content editor' => 'get_content_editor_permissions',
+        'content approver' => 'get_content_approver_permissions',
+        'site moderator' => 'get_site_moderator_permissions',
+        'advanced content editor' => 'get_advanced_content_editor_permissions',
+        'site manager' => 'get_site_manager_permissions',
+    );
+
+    // get list of known permissions
+    $known_permissions = nci_user_roles_get_permissions();
+    //$permission_list = array_keys($known_permissions);
+
+    nci_user_roles_update_roles($role_permission_map, $known_permissions);
+}
+
+function nci_user_roles_disable() {
+    
+}
+
+/**
+ * Generates the permissions allowed for the anonymous user
+ * 
+ * @return array a keyed array of module name => permission => value
+ */
+function get_anonymous_user_permissions() {
+    
+}
+
+function get_content_editor_permissions() {
+    $editor_permissions = array(
+        'use text format filtered html' => TRUE,
+        'use text format full html' => TRUE,
+        'create url aliases' => TRUE,
+        'administer redirects' => TRUE,
+        'access relations' => TRUE,
+        'create relations' => TRUE,
+        'edit relations' => TRUE,
+        'delete relations' => TRUE,
+        'access administration pages' => TRUE,
+        'view the administration theme' => TRUE,
+        'access toolbar' => TRUE,
+        'access workbench' => TRUE,
+        'access workbench access by role' => TRUE,
+        'view workbench access information' => TRUE,
+        'view all unpublished content' => TRUE,
+        'view moderation history' => TRUE,
+        'view moderation messages' => TRUE,
+        'use workbench moderation my drafts tab' => TRUE,
+        'use workbench moderation needs review tab' => TRUE,
+        'moderate content from draft to needs_review' => TRUE,
+        'moderate content from needs_review to draft' => TRUE,
+        'moderate content from published to draft' => TRUE,
+        'moderate content from private archive to draft' => TRUE,
+        'access content overview' => TRUE,
+        'view own unpublished content' => TRUE,
+        'view revisions' => TRUE,
+        'revert revisions' => TRUE,
+        'create general content' => TRUE, // Grant permission
+        'edit any general content' => TRUE, // Grant permission
+        'create site home content' => TRUE,
+        'edit any site home content' => TRUE,
+        'create portal content' => TRUE,
+        'edit any portal content' => TRUE,
+        'create event content' => TRUE,
+        'edit any event content' => TRUE,
+        'create news article content' => TRUE,
+        'edit any news article content' => TRUE,
+        'create aggregator content' => TRUE,
+        'edit any aggregator content' => TRUE,
+        'create citation content' => TRUE,
+        'edit any citation content' => TRUE,
+        'create list content' => TRUE,
+        'edit any list content' => TRUE,
+        'create content block content' => TRUE,
+        'edit any content block content' => TRUE,
+        'create content carousel content' => TRUE,
+        'edit any content carousel content' => TRUE,
+        'create content carousel item content' => TRUE,
+        'edit any content carousel item content' => TRUE,
+        'create image content' => TRUE,
+        'edit any image content' => TRUE,
+        'create audio content' => TRUE,
+        'edit any audio content' => TRUE,
+        'create external link content' => TRUE,
+        'edit any external link content' => TRUE,
+        'create file content' => TRUE,
+        'edit any file content' => TRUE,
+        'create highlighted content content' => TRUE,
+        'edit any highlighted content content' => TRUE,
+        'create audio content' => TRUE,
+        'edit any audio content' => TRUE,
+    );
+    return $editor_permissions;
+}
+
+function get_content_approver_permissions() {
+    $approver_permissions = array(
+        'moderate all content from draft to archive' => TRUE,
+        'moderate all content from review to published' => TRUE,
+        'moderate all content from published to private archive' => TRUE,
+    );
+
+    //because the approver role inherits from content editor, give them these permissions
+    $approver_permissions = array_merge($approver_permissions, get_content_editor_permissions());
+
+    return $approver_permissions;
+}
+
+function get_site_moderator_permissions() {
+    $moderator_permissions = array(
+        'access all webform results' => TRUE,
+        'administer comments' => TRUE,
+        'administer users' => TRUE,
+    );
+
+    return $moderator_permissions;
+}
+
+function get_advanced_content_editor_permissions() {
+    $adveditor_permissions = array(
+        'create general content' => TRUE, // Grant permission
+        'delete any general content' => TRUE, // Grant permission
+        'create site home content' => TRUE,
+        'delete any site home content' => TRUE,
+        'create portal content' => TRUE,
+        'delete any portal content' => TRUE,
+        'create event content' => TRUE,
+        'edit any event content' => TRUE,
+        'create news article content' => TRUE,
+        'edit any news article content' => TRUE,
+        'create aggregator content' => TRUE,
+        'edit any aggregator content' => TRUE,
+        'create citation content' => TRUE,
+        'edit any citation content' => TRUE,
+        'create list content' => TRUE,
+        'edit any list content' => TRUE,
+        'create content block content' => TRUE,
+        'edit any content block content' => TRUE,
+        'create content carousel content' => TRUE,
+        'edit any content carousel content' => TRUE,
+        'create content carousel item content' => TRUE,
+        'edit any content carousel item content' => TRUE,
+        'create image content' => TRUE,
+        'edit any image content' => TRUE,
+        'create audio content' => TRUE,
+        'edit any audio content' => TRUE,
+        'create external link content' => TRUE,
+        'edit any external link content' => TRUE,
+        'create file content' => TRUE,
+        'edit any file content' => TRUE,
+        'create highlighted content content' => TRUE,
+        'edit any highlighted content content' => TRUE,
+        'create audio content' => TRUE,
+        'edit any audio content' => TRUE,
+    );
+
+    return $adveditor_permissions;
+}
+
+/**
+ * Utility function for creating a role and defining its permissions safely.
+ * 
+ * @param array $role_map         Array in the form of role_name => 
+ *                                permission_name => permission_value or
+ *                                role_name => function_name, where the function
+ *                                return a list of permission / value pairs.
+ * @param type $known_permissions A list of known permission names, used to
+ *                                filter the desired permissions in the case
+ *                                of missing modules
+ */
+function nci_user_roles_update_roles($role_map, $known_permissions) {
+    
+    nci_user_roles_clear_permissions();
+    
+    foreach ($role_map as $role_name => $permission_src) {
+        // check inputs
+        // ensure role name is a string
+        if (!is_string($role_name)) {
+            drupal_set_message("Cannot use $role_name as a user role.", 'warning');
+            continue;
+        }
+        // call the source if it is a defined function
+        $role_permissions = $permission_src;
+        if (is_string($permission_src) && function_exists($permission_src)) {
+            $role_permissions = $permission_src();
+        }
+        // if the source or returned values are not a 2D array, fail
+        if (!(is_array($role_permissions))) {
+            drupal_set_message(
+                    "Cannot use $role_permissions as permissions for role $role_name.", 'warning');
+            continue;
+        }
+
+        // load the role if it exists
+        $role = user_role_load_by_name($role_name);
+        if (!$role) {
+            // else, create the role
+            $role = new stdClass();
+            $role->name = $role_name;
+            user_role_save($role);
+
+            // Role to grant the permissions to
+            $role = user_role_load_by_name($role_name);
+        }
+        // retrieve the role id
+        $rid = $role->rid;
+
+        // intersect the desired permissions with actual permissions
+        $good_permissions =
+                array_intersect_key($role_permissions, $known_permissions);
+
+        if (sizeof($good_permissions) < sizeof($role_permissions)) {
+            $diff = array_keys(array_diff_key($role_permissions, $good_permissions));
+            $reject_list = implode(', ', $diff);
+            $pass_list = implode(', ', array_keys($good_permissions));
+            drupal_set_message(
+                    "Cannot set some permissions for $role_name REJECTED: $reject_list PASS: $pass_list", 'warning');
+        }
+
+        // Grant permissions to the role
+        user_role_change_permissions($rid, $good_permissions);
+    }
+}
+
+function _create_content_editor() {
+    $editor_role = user_role_load_by_name('content editor');
+    if (!$editor_role) {
+        $role = new stdClass();
+        $role->name = 'content editor';
+        user_role_save($role);
+
+        // Role to grant the permissions to
+        $editor_role = user_role_load_by_name('content editor');
+    }
+    $editor_rid = $editor_role->rid;
+    // Define our 'editor' role permissions
+    $editor_permissions = get_content_editor_permissions();
+    // Grant permissions to our 'editor' role
+    user_role_change_permissions($editor_rid, $editor_permissions);
+}
+
+function _create_content_approver() {
+    $role = new stdClass();
+    $role->name = 'content approver';
+    // $role->weight = 10;
+    user_role_save($role);
+}
+
+function _create_site_moderator() {
+    $role = new stdClass();
+    $role->name = 'site moderator';
+    // $role->weight = 10;
+    user_role_save($role);
+}
+
+function _create_advanced_content_editor() {
+    $role = new stdClass();
+    $role->name = 'advanced content editor';
+    // $role->weight = 10;
+    user_role_save($role);
+}
+
+function _create_site_manager() {
+    $role = new stdClass();
+    $role->name = 'site manager';
+    // $role->weight = 10;
+    user_role_save($role);
+}
+
+/**
+ * Clears all permissions for the provided user roles.  Rejects the admin role 
+ * if provided.
+ * 
+ * @param array $roles      Clears the permissions of the role names contained 
+ *                          in this array, or leave empty for all
+ * @param array $options    Placeholder for potential modifiers to this 
+ *                          function.
+ */
+function nci_user_roles_clear_permissions(array $roles = array(), array $options = array()) {
+    if(empty($roles)) $roles = user_roles();
+    
+    foreach ($roles as $role_name) {
+        if ($role_name == 'administrator')
+            continue;
+
+        $role = user_role_load_by_name($role_name);
+        if ($role) {
+            $rid = $role->rid;
+
+            $permissions = user_role_permissions(array($rid => $rid));
+            
+            $permission_names = array_keys($permissions[$rid]);
+            
+            if(empty($permission_names)) {
+                drupal_set_message("No permissions for $role_name, skipping clear.");
+                continue;
+            }
+
+            drupal_set_message("$role_name PERMISSIONS TO CLEAR: " .
+                    implode(', ', $permission_names));
+            
+            // clear EVERYTHING.
+            user_role_revoke_permissions($rid, $permission_names);
+        }
+    }
+}
+
+function nci_user_roles_get_permissions() {
+    $module_permissions = array();
+    foreach (module_list(FALSE, FALSE, TRUE) as $module) {
+        if ($permissions = module_invoke($module, 'permission')) {
+            foreach ($permissions as $permission => $parameters) {
+                $module_permissions[$permission] = $parameters;
+                $module_permissions[$permission]['module'] = $module;
+            }
+        }
+    }
+
+    return $module_permissions;
+}
+
+?>
