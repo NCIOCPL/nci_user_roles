@@ -14,8 +14,22 @@ function nci_user_roles_uninstall() {
 }
 
 function nci_user_roles_enable() {
-    // map role names to permission functions
-    $role_permission_map = array(
+    nci_user_roles_set_permissions();
+}
+
+function nci_user_roles_disable() {
+    
+}
+
+function nci_user_roles_set_permissions(){
+    $role_map = nci_user_roles_get_defaults();
+    $role_permissions = nci_user_roles_prepare_permissions($role_map);
+
+    nci_user_roles_update_roles($role_permissions);
+}
+
+function nci_user_roles_get_defaults() {
+    return array(
         'anonymous user' => 'get_anonymous_user_permissions',
         'authenticated user' => 'get_authenticated_user_permissions',
         'content editor' => 'get_content_editor_permissions',
@@ -24,16 +38,6 @@ function nci_user_roles_enable() {
         'advanced content editor' => 'get_advanced_content_editor_permissions',
         'site manager' => 'get_site_manager_permissions',
     );
-
-    // get list of known permissions
-    $known_permissions = nci_user_roles_get_permissions();
-    //$permission_list = array_keys($known_permissions);
-
-    nci_user_roles_update_roles($role_permission_map, $known_permissions);
-}
-
-function nci_user_roles_disable() {
-    
 }
 
 /**
@@ -42,13 +46,29 @@ function nci_user_roles_disable() {
  * @return array a keyed array of module name => permission => value
  */
 function get_anonymous_user_permissions() {
+    return array(
+        'access comments' => true,
+        'access content' => true,
+        'search content' => true,
+        'use advanced search' => true,
+    );
+}
+
+function get_authenticated_user_permissions() {
+    $perms = get_anonymous_user_permissions();
+    $perms += array(
+        'post comments' => true,
+        'edit own comments' => true,
+        'use text format filtered_html' => true,
+    );
     
+    return $perms;
 }
 
 function get_content_editor_permissions() {
-    $editor_permissions = array(
-        'use text format filtered html' => TRUE,
-        'use text format full html' => TRUE,
+    $perms = get_authenticated_user_permissions();
+    $perms += array(
+        'use text format full_html' => TRUE,
         'create url aliases' => TRUE,
         'administer redirects' => TRUE,
         'access relations' => TRUE,
@@ -64,17 +84,17 @@ function get_content_editor_permissions() {
         'view all unpublished content' => TRUE,
         'view moderation history' => TRUE,
         'view moderation messages' => TRUE,
-        'use workbench moderation my drafts tab' => TRUE,
+        /*'use workbench moderation my drafts tab' => TRUE,
         'use workbench moderation needs review tab' => TRUE,
         'moderate content from draft to needs_review' => TRUE,
         'moderate content from needs_review to draft' => TRUE,
         'moderate content from published to draft' => TRUE,
-        'moderate content from private archive to draft' => TRUE,
+        'moderate content from private archive to draft' => TRUE,*/
         'access content overview' => TRUE,
         'view own unpublished content' => TRUE,
         'view revisions' => TRUE,
         'revert revisions' => TRUE,
-        'create general content' => TRUE, // Grant permission
+        /*'create general content' => TRUE, // Grant permission
         'edit any general content' => TRUE, // Grant permission
         'create site home content' => TRUE,
         'edit any site home content' => TRUE,
@@ -107,37 +127,46 @@ function get_content_editor_permissions() {
         'create highlighted content content' => TRUE,
         'edit any highlighted content content' => TRUE,
         'create audio content' => TRUE,
-        'edit any audio content' => TRUE,
+        'edit any audio content' => TRUE,*/
     );
-    return $editor_permissions;
+    return $perms;
 }
 
 function get_content_approver_permissions() {
-    $approver_permissions = array(
-        'moderate all content from draft to archive' => TRUE,
+    $perms = get_content_editor_permissions();
+    
+    $perms += array(
+        /*'moderate all content from draft to archive' => TRUE,
         'moderate all content from review to published' => TRUE,
-        'moderate all content from published to private archive' => TRUE,
+        'moderate all content from published to private archive' => TRUE,*/
     );
 
-    //because the approver role inherits from content editor, give them these permissions
-    $approver_permissions = array_merge($approver_permissions, get_content_editor_permissions());
-
-    return $approver_permissions;
+    return $perms;
 }
 
 function get_site_moderator_permissions() {
-    $moderator_permissions = array(
+    $perms = get_content_approver_permissions();
+    $perms += array(
         'access all webform results' => TRUE,
         'administer comments' => TRUE,
         'administer users' => TRUE,
     );
 
-    return $moderator_permissions;
+    return $perms;
 }
 
 function get_advanced_content_editor_permissions() {
-    $adveditor_permissions = array(
-        'create general content' => TRUE, // Grant permission
+    $perms = get_site_moderator_permissions();
+    $perms += array(
+        'administer blocks' => true,
+        'administer menu' => true,
+        'administer taxonomy' => true,
+        'administer views' => true,
+        'administer nodes' => true,
+        'administer url aliases' => true,
+        'display site building menu' => true,
+        'display site configuration menu' => true,
+        /*'create general content' => TRUE, // Grant permission
         'delete any general content' => TRUE, // Grant permission
         'create site home content' => TRUE,
         'delete any site home content' => TRUE,
@@ -170,10 +199,20 @@ function get_advanced_content_editor_permissions() {
         'create highlighted content content' => TRUE,
         'edit any highlighted content content' => TRUE,
         'create audio content' => TRUE,
-        'edit any audio content' => TRUE,
+        'edit any audio content' => TRUE,*/
     );
 
-    return $adveditor_permissions;
+    return $perms;
+}
+
+function get_site_manager_permissions() {
+    $perms = get_advanced_content_editor_permissions();
+    
+    $perms += array(
+        
+    );
+    
+    return $perms;
 }
 
 /**
@@ -183,14 +222,57 @@ function get_advanced_content_editor_permissions() {
  *                                permission_name => permission_value or
  *                                role_name => function_name, where the function
  *                                return a list of permission / value pairs.
- * @param type $known_permissions A list of known permission names, used to
- *                                filter the desired permissions in the case
- *                                of missing modules
  */
-function nci_user_roles_update_roles($role_map, $known_permissions) {
+function nci_user_roles_update_roles(array $role_map) {
+    $known_permissions = nci_user_roles_get_permissions();
     
-    nci_user_roles_clear_permissions();
-    
+    foreach ($role_map as $role_name => $permissions) {
+        // load the role if it exists
+        $role = user_role_load_by_name($role_name);
+        if (!$role) {
+            // else, create the role
+            $role = new stdClass();
+            $role->name = $role_name;
+            user_role_save($role);
+
+            // Role to grant the permissions to
+            $role = user_role_load_by_name($role_name);
+        }
+        // retrieve the role id
+        $rid = $role->rid;
+
+        // intersect the desired permissions with actual permissions
+        $good_permissions =
+                array_intersect_key($permissions, $known_permissions);
+        
+        // pass the valid permissions along to clear the outling permission        
+        nci_user_roles_clear_permissions(array($role_name), $good_permissions);
+
+        if (sizeof($good_permissions) < sizeof($permissions)) {
+            $diff = array_keys(array_diff_key($permissions, $good_permissions));
+            $reject_list = implode(', ', $diff);
+            //$pass_list = implode(', ', array_keys($good_permissions));
+            drupal_set_message(
+                    "Cannot set some permissions for $role_name REJECTED: $reject_list", 'warning');
+        }
+
+        // Grant permissions to the role
+        user_role_change_permissions($rid, $good_permissions);
+        drupal_set_message("Updated roles for role $role_name");
+    }
+}
+
+/**
+ * Utility function for checking the given permissions (whether arrays or
+ * functions) and handling the hook calls.
+ * 
+ * @param array $role_map         Array in the form of role_name => 
+ *                                permission_name => permission_value or
+ *                                role_name => function_name, where the function
+ *                                return a list of permission / value pairs.
+ */
+function nci_user_roles_prepare_permissions(array $role_map) {
+    $retrieved_perms = array();
     foreach ($role_map as $role_name => $permission_src) {
         // check inputs
         // ensure role name is a string
@@ -209,36 +291,14 @@ function nci_user_roles_update_roles($role_map, $known_permissions) {
                     "Cannot use $role_permissions as permissions for role $role_name.", 'warning');
             continue;
         }
-
-        // load the role if it exists
-        $role = user_role_load_by_name($role_name);
-        if (!$role) {
-            // else, create the role
-            $role = new stdClass();
-            $role->name = $role_name;
-            user_role_save($role);
-
-            // Role to grant the permissions to
-            $role = user_role_load_by_name($role_name);
-        }
-        // retrieve the role id
-        $rid = $role->rid;
-
-        // intersect the desired permissions with actual permissions
-        $good_permissions =
-                array_intersect_key($role_permissions, $known_permissions);
-
-        if (sizeof($good_permissions) < sizeof($role_permissions)) {
-            $diff = array_keys(array_diff_key($role_permissions, $good_permissions));
-            $reject_list = implode(', ', $diff);
-            $pass_list = implode(', ', array_keys($good_permissions));
-            drupal_set_message(
-                    "Cannot set some permissions for $role_name REJECTED: $reject_list PASS: $pass_list", 'warning');
-        }
-
-        // Grant permissions to the role
-        user_role_change_permissions($rid, $good_permissions);
+        
+        $retrieved_perms[$role_name] = $role_permissions;
     }
+    
+    // next, pass this array around to hooked-on modules
+    $returned_parms = module_invoke_all('user_roles_alter', $retrieved_perms);
+    
+    return array_merge($retrieved_perms, $returned_parms);
 }
 
 function _create_content_editor() {
@@ -292,10 +352,9 @@ function _create_site_manager() {
  * 
  * @param array $roles      Clears the permissions of the role names contained 
  *                          in this array, or leave empty for all
- * @param array $options    Placeholder for potential modifiers to this 
- *                          function.
+ * @param array $whitelist  Array of permissions to not modify
  */
-function nci_user_roles_clear_permissions(array $roles = array(), array $options = array()) {
+function nci_user_roles_clear_permissions(array $roles = array(), array $whitelist = array()) {
     if(empty($roles)) $roles = user_roles();
     
     foreach ($roles as $role_name) {
@@ -308,20 +367,37 @@ function nci_user_roles_clear_permissions(array $roles = array(), array $options
 
             $permissions = user_role_permissions(array($rid => $rid));
             
-            $permission_names = array_keys($permissions[$rid]);
+            $role_perms = $permissions[$rid];
+            
+            // deduct the whitelist from the permissions found
+            //drupal_set_message("$role_name permissions - " . implode(', ', array_keys($role_perms)) . "\n");
+            //drupal_set_message("$role_name whitelist - " . implode(', ', array_keys($whitelist)) . "\n");
+            
+            $remainder_perms = array_diff_key($role_perms, $whitelist);
+            
+            //drupal_set_message("$role_name remainder - " . implode(', ', array_keys($remainder_perms)) . "\n");
+            
+            $permission_names = array_keys($remainder_perms);
             
             if(empty($permission_names)) {
-                drupal_set_message("No permissions for $role_name, skipping clear.");
+                //drupal_set_message("$role_name: no permissions to clear.");
                 continue;
             }
 
-            drupal_set_message("$role_name PERMISSIONS TO CLEAR: " .
+            drupal_set_message("$role_name: CLEARING PERMISSIONS: " .
                     implode(', ', $permission_names));
             
-            // clear EVERYTHING.
+            // clear EVERYTHING not whitelisted.
             user_role_revoke_permissions($rid, $permission_names);
         }
     }
+}
+
+function nci_user_roles_init() {
+    $role_map = nci_user_roles_get_defaults();
+    $role_permissions = nci_user_roles_prepare_permissions($role_map);
+    
+    dsm($role_permissions, 'role permissions');
 }
 
 function nci_user_roles_get_permissions() {
