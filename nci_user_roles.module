@@ -250,10 +250,10 @@ function nci_user_roles_update_roles(array $role_map) {
 
         if (sizeof($good_permissions) < sizeof($permissions)) {
             $diff = array_keys(array_diff_key($permissions, $good_permissions));
-            $reject_list = implode(', ', $diff);
-            //$pass_list = implode(', ', array_keys($good_permissions));
+            $reject_list = implode("\n", $diff);
+            //$pass_list = implode("\n", array_keys($good_permissions));
             drupal_set_message(
-                    "Cannot set some permissions for $role_name REJECTED: $reject_list", 'warning');
+                    "Cannot set some permissions for $role_name.\nREJECTED:\n$reject_list\n", 'warning');
         }
 
         // Grant permissions to the role
@@ -394,10 +394,9 @@ function nci_user_roles_clear_permissions(array $roles = array(), array $whiteli
 }
 
 function nci_user_roles_init() {
-    $role_map = nci_user_roles_get_defaults();
-    $role_permissions = nci_user_roles_prepare_permissions($role_map);
+    $permissions = nci_user_roles_get_permissions();
     
-    dsm($role_permissions, 'role permissions');
+    dsm($permissions, 'module permissions');
 }
 
 function nci_user_roles_get_permissions() {
@@ -412,6 +411,85 @@ function nci_user_roles_get_permissions() {
     }
 
     return $module_permissions;
+}
+
+/**
+ * Builds an array of content type permissions, given an array of types and
+ * access levels desired
+ * 
+ * @param array $types  An array of content type names
+ * @param array $access An array of desired access, denoted by the terms
+ *                      'edit own', 'edit any', 'delete own', delete any', and
+ *                      'create'
+ * @return array        An array of the desired type permissions
+ */
+function mynci_user_roles_build_content_type_permissions(array $types,
+        array $access_levels) {
+    $type_perms = array();
+    foreach($types as $type) {
+        foreach($access_levels as $level) {
+            $perm_string = '';
+            switch ($level) {
+                case 'edit own':
+                case 'edit any':
+                case 'delete own':
+                case 'delete any':
+                case 'create':
+                    $perm_string = "$level $type content";
+
+                    break;
+                default:
+                    continue;
+            }
+            
+            $type_perms[$perm_string] = true;
+        }
+    }
+    
+    return $type_perms;
+}
+
+/**
+ * Builds an array of content type permissions, given an array of types and
+ * access levels desired
+ * 
+ * @param array $types  An array of content type names
+ * @param array $access An array of desired access, denoted by the terms
+ *                      'edit own', 'edit any', 'delete own', delete any', and
+ *                      'create'
+ * @return array        An array of the desired type permissions
+ */
+function mynci_user_roles_build_taxonomy_permissions(array $vocabs,
+        array $access_levels) {
+    $type_perms = array();
+    foreach($vocabs as $vocab_name) {
+        // attempt to lookup the given vocabulary
+        $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
+        
+        if(!$vocab) {
+            drupal_set_message("Cannot load vocabulary $vocab_name.", 'warning');
+            continue;
+        }
+        
+        $vid = $vocab->vid;
+        
+        foreach($access_levels as $level) {
+            $perm_string = '';
+            switch ($level) {
+                case 'edit':
+                case 'delete':
+                    $perm_string = "$level terms in $vid";
+
+                    break;
+                default:
+                    continue;
+            }
+            
+            $type_perms[$perm_string] = true;
+        }
+    }
+    
+    return $type_perms;
 }
 
 ?>
