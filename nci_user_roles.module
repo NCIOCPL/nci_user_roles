@@ -14,7 +14,7 @@ function nci_user_roles_uninstall() {
 }
 
 function nci_user_roles_enable() {
-    nci_user_roles_set_permissions();
+    
 }
 
 function nci_user_roles_disable() {
@@ -242,22 +242,37 @@ function nci_user_roles_update_roles(array $role_map) {
         $rid = $role->rid;
 
         // intersect the desired permissions with actual permissions
-        $good_permissions =
-                array_intersect_key($permissions, $known_permissions);
+        $good_perms = array_intersect_key($permissions, $known_permissions);
         
-        // pass the valid permissions along to clear the outling permission        
-        nci_user_roles_clear_permissions(array($role_name), $good_permissions);
+        // get the permissions already set for the role
+        $set_perms = user_role_permissions(array($rid));
+        
+        // pull specific role permissions
+        if(isset($set_perms[$rid])) {
+            $set_perms = $set_perms[$rid];
+        }
+        else
+            $set_perms = array();
+        
+        // break out the unset permissions
+        $unset_perms = array_diff_key($good_perms, $set_perms);
+        
+        // pass the valid permissions along to clear the outlying permissions
+        nci_user_roles_clear_permissions(array($role_name), $good_perms);
 
-        if (sizeof($good_permissions) < sizeof($permissions)) {
-            $diff = array_keys(array_diff_key($permissions, $good_permissions));
-            $reject_list = implode("\n", $diff);
+        // find the permissions to clear (e. g. the ones that are set that are
+        // not in the desired list)
+        $bad_perms = array_diff_key($set_perms, $good_perms);
+        if (!empty($bad_perms)) {
+            //$diff = array_keys();
+            $reject_list = implode("\n", $bad_perms);
             //$pass_list = implode("\n", array_keys($good_permissions));
             drupal_set_message(
                     "Cannot set some permissions for $role_name.\nREJECTED:\n$reject_list\n", 'warning');
         }
 
         // Grant permissions to the role
-        user_role_change_permissions($rid, $good_permissions);
+        user_role_change_permissions($rid, $good_perms);
         drupal_set_message("Updated roles for role $role_name");
     }
 }
@@ -285,7 +300,7 @@ function nci_user_roles_prepare_permissions(array $role_map) {
         if (is_string($permission_src) && function_exists($permission_src)) {
             $role_permissions = $permission_src();
         }
-        // if the source or returned values are not a 2D array, fail
+        // if the source or returned values are not an array, fail
         if (!(is_array($role_permissions))) {
             drupal_set_message(
                     "Cannot use $role_permissions as permissions for role $role_name.", 'warning');
@@ -296,9 +311,30 @@ function nci_user_roles_prepare_permissions(array $role_map) {
     }
     
     // next, pass this array around to hooked-on modules
-    $returned_parms = module_invoke_all('user_roles_alter', $retrieved_perms);
+    $returned_perms = module_invoke_all('role_permissions', $retrieved_perms);
+    $current_perms = array_merge_recursive($retrieved_perms, $returned_perms);
     
-    return array_merge($retrieved_perms, $returned_parms);
+    // retrieve updated inheritances
+    /*$base_inherits = nci_user_roles_get_base_inherits();
+    $module_inherits = module_invoke_all('role_inheritance');
+    $new_inherits = array_merge_recursive($base_inherits, $inheritances);
+    
+    $inherit_order = array_reduce($new_inherits, '_flatten_inherits', array());*/
+    
+    return $current_perms;
+}
+
+function nci_user_roles_get_base_inherits(){
+    return array(
+        'anonymous user' => array(),
+        'authenticated user' => array(
+            'anonymous user' => 'anonymous user',
+        ),
+        'content editor' => array(
+            'anonymous user' => 'anonymous user',
+            'authenticated user' => 'authenticated user',
+        )
+    );
 }
 
 function _create_content_editor() {
@@ -394,9 +430,9 @@ function nci_user_roles_clear_permissions(array $roles = array(), array $whiteli
 }
 
 function nci_user_roles_init() {
-    $permissions = nci_user_roles_get_permissions();
+    //$permissions = nci_user_roles_get_permissions();
     
-    dsm($permissions, 'module permissions');
+    //dsm($permissions, 'module permissions');
 }
 
 function nci_user_roles_get_permissions() {
@@ -423,7 +459,7 @@ function nci_user_roles_get_permissions() {
  *                      'create'
  * @return array        An array of the desired type permissions
  */
-function mynci_user_roles_build_content_type_permissions(array $types,
+function nci_user_roles_build_content_type_permissions(array $types,
         array $access_levels) {
     $type_perms = array();
     foreach($types as $type) {
@@ -459,7 +495,7 @@ function mynci_user_roles_build_content_type_permissions(array $types,
  *                      'create'
  * @return array        An array of the desired type permissions
  */
-function mynci_user_roles_build_taxonomy_permissions(array $vocabs,
+function nci_user_roles_build_taxonomy_permissions(array $vocabs,
         array $access_levels) {
     $type_perms = array();
     foreach($vocabs as $vocab_name) {
@@ -490,6 +526,10 @@ function mynci_user_roles_build_taxonomy_permissions(array $vocabs,
     }
     
     return $type_perms;
+}
+
+function nci_user_roles_modules_enabled($modules) {
+    nci_user_roles_set_permissions();
 }
 
 ?>
