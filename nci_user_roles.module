@@ -256,9 +256,6 @@ function nci_user_roles_update_roles(array $role_map) {
         
         // break out the unset permissions
         $unset_perms = array_diff_key($good_perms, $set_perms);
-        
-        // pass the valid permissions along to clear the outlying permissions
-        nci_user_roles_clear_permissions(array($role_name), $good_perms);
 
         // find the permissions to clear (e. g. the ones that are set that are
         // not in the desired list)
@@ -269,6 +266,9 @@ function nci_user_roles_update_roles(array $role_map) {
             //$pass_list = implode("\n", array_keys($good_permissions));
             drupal_set_message(
                     "Cannot set some permissions for $role_name.\nREJECTED:\n$reject_list\n", 'warning');
+            
+            // pass the valid permissions along to clear the outlying permissions
+            nci_user_roles_clear_permissions(array($role_name), $bad_perms);
         }
 
         // Grant permissions to the role
@@ -315,11 +315,11 @@ function nci_user_roles_prepare_permissions(array $role_map) {
     $current_perms = array_merge_recursive($retrieved_perms, $returned_perms);
     
     // retrieve updated inheritances
-    /*$base_inherits = nci_user_roles_get_base_inherits();
+    $base_inherits = nci_user_roles_get_base_inherits();
     $module_inherits = module_invoke_all('role_inheritance');
-    $new_inherits = array_merge_recursive($base_inherits, $inheritances);
+    $new_inherits = array_merge_recursive($base_inherits, $module_inherits);
     
-    $inherit_order = array_reduce($new_inherits, '_flatten_inherits', array());*/
+    //$inherit_order = array_reduce($new_inherits, '_flatten_inherits', array());
     
     return $current_perms;
 }
@@ -327,13 +327,12 @@ function nci_user_roles_prepare_permissions(array $role_map) {
 function nci_user_roles_get_base_inherits(){
     return array(
         'anonymous user' => array(),
-        'authenticated user' => array(
-            'anonymous user' => 'anonymous user',
-        ),
-        'content editor' => array(
-            'anonymous user' => 'anonymous user',
-            'authenticated user' => 'authenticated user',
-        )
+        'authenticated user' => array('anonymous user'),
+        'content editor' => array('authenticated user'),
+        'content approver' => array('content editor'),
+        'site moderator' => array('content approver'),
+        'advanced content editor' => array('site moderator'),
+        'site manager' => array('advanced content editor'),
     );
 }
 
@@ -383,14 +382,17 @@ function _create_site_manager() {
 }
 
 /**
- * Clears all permissions for the provided user roles.  Rejects the admin role 
+ * Clears permissions for the provided user roles.  Rejects the admin role 
  * if provided.
  * 
  * @param array $roles      Clears the permissions of the role names contained 
  *                          in this array, or leave empty for all
- * @param array $whitelist  Array of permissions to not modify
+ * @param array $whitelist  Array of permissions to clear, or leave empty for all.
  */
-function nci_user_roles_clear_permissions(array $roles = array(), array $whitelist = array()) {
+function nci_user_roles_clear_permissions(array $roles = array(), 
+        array $blacklist = array()) {
+    var_dump($blacklist);
+    
     if(empty($roles)) $roles = user_roles();
     
     foreach ($roles as $role_name) {
@@ -401,19 +403,12 @@ function nci_user_roles_clear_permissions(array $roles = array(), array $whiteli
         if ($role) {
             $rid = $role->rid;
 
-            $permissions = user_role_permissions(array($rid => $rid));
+            if (empty($blacklist)) {
+                $permissions = user_role_permissions(array($rid => $rid));
+                $blacklist = $permissions[$rid];
+            }
             
-            $role_perms = $permissions[$rid];
-            
-            // deduct the whitelist from the permissions found
-            //drupal_set_message("$role_name permissions - " . implode(', ', array_keys($role_perms)) . "\n");
-            //drupal_set_message("$role_name whitelist - " . implode(', ', array_keys($whitelist)) . "\n");
-            
-            $remainder_perms = array_diff_key($role_perms, $whitelist);
-            
-            //drupal_set_message("$role_name remainder - " . implode(', ', array_keys($remainder_perms)) . "\n");
-            
-            $permission_names = array_keys($remainder_perms);
+            $permission_names = array_keys($blacklist);
             
             if(empty($permission_names)) {
                 //drupal_set_message("$role_name: no permissions to clear.");
