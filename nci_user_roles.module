@@ -55,8 +55,7 @@ function get_anonymous_user_permissions() {
 }
 
 function get_authenticated_user_permissions() {
-    $perms = get_anonymous_user_permissions();
-    $perms += array(
+    $perms = array(
         'post comments' => true,
         'edit own comments' => true,
         'use text format filtered_html' => true,
@@ -66,8 +65,7 @@ function get_authenticated_user_permissions() {
 }
 
 function get_content_editor_permissions() {
-    $perms = get_authenticated_user_permissions();
-    $perms += array(
+    $perms = array(
         'use text format full_html' => TRUE,
         'create url aliases' => TRUE,
         'administer redirects' => TRUE,
@@ -133,9 +131,7 @@ function get_content_editor_permissions() {
 }
 
 function get_content_approver_permissions() {
-    $perms = get_content_editor_permissions();
-    
-    $perms += array(
+    $perms = array(
         /*'moderate all content from draft to archive' => TRUE,
         'moderate all content from review to published' => TRUE,
         'moderate all content from published to private archive' => TRUE,*/
@@ -145,8 +141,7 @@ function get_content_approver_permissions() {
 }
 
 function get_site_moderator_permissions() {
-    $perms = get_content_approver_permissions();
-    $perms += array(
+    $perms = array(
         'access all webform results' => TRUE,
         'administer comments' => TRUE,
         'administer users' => TRUE,
@@ -156,8 +151,7 @@ function get_site_moderator_permissions() {
 }
 
 function get_advanced_content_editor_permissions() {
-    $perms = get_site_moderator_permissions();
-    $perms += array(
+    $perms = array(
         'administer blocks' => true,
         'administer menu' => true,
         'administer taxonomy' => true,
@@ -206,10 +200,8 @@ function get_advanced_content_editor_permissions() {
 }
 
 function get_site_manager_permissions() {
-    $perms = get_advanced_content_editor_permissions();
-    
-    $perms += array(
-        
+    $perms = array(
+        'administer performance' => TRUE,
     );
     
     return $perms;
@@ -237,6 +229,11 @@ function nci_user_roles_update_roles(array $role_map) {
 
             // Role to grant the permissions to
             $role = user_role_load_by_name($role_name);
+            
+            if(!$role)
+                drupal_set_message("Failed to create role $role_name!", 'warning');
+            else
+                drupal_set_message("Created role $role_name.");
         }
         // retrieve the role id
         $rid = $role->rid;
@@ -245,7 +242,7 @@ function nci_user_roles_update_roles(array $role_map) {
         $good_perms = array_intersect_key($permissions, $known_permissions);
         
         // get the permissions already set for the role
-        $set_perms = user_role_permissions(array($rid));
+        $set_perms = user_role_permissions(array($rid => $role_name));
         
         // pull specific role permissions
         if(isset($set_perms[$rid])) {
@@ -261,19 +258,17 @@ function nci_user_roles_update_roles(array $role_map) {
         // not in the desired list)
         $bad_perms = array_diff_key($set_perms, $good_perms);
         if (!empty($bad_perms)) {
-            //$diff = array_keys();
-            $reject_list = implode("\n", $bad_perms);
-            //$pass_list = implode("\n", array_keys($good_permissions));
-            drupal_set_message(
-                    "Cannot set some permissions for $role_name.\nREJECTED:\n$reject_list\n", 'warning');
-            
             // pass the valid permissions along to clear the outlying permissions
             nci_user_roles_clear_permissions(array($role_name), $bad_perms);
         }
 
         // Grant permissions to the role
-        user_role_change_permissions($rid, $good_perms);
-        drupal_set_message("Updated roles for role $role_name");
+        if(!empty($unset_perms)) {
+            user_role_change_permissions($rid, $unset_perms);
+            $set_list = implode(", \n", array_keys($unset_perms));
+            drupal_set_message(
+                    "Setting permissions for $role_name:\n$set_list\n");
+        }
     }
 }
 
@@ -319,9 +314,52 @@ function nci_user_roles_prepare_permissions(array $role_map) {
     $module_inherits = module_invoke_all('role_inheritance');
     $new_inherits = array_merge_recursive($base_inherits, $module_inherits);
     
-    //$inherit_order = array_reduce($new_inherits, '_flatten_inherits', array());
+    // determine inherit order and merge permissions according to it
+    $sorted_inherits = nci_user_roles_sort_inherits($new_inherits);
+    $merged_perms = nci_user_roles_merge_inherits($sorted_inherits, 
+            $current_perms);
     
-    return $current_perms;
+    return $merged_perms;
+}
+
+function nci_user_roles_sort_inherits(array $inherits){
+    $inherit_order = array();
+    
+    $remnant = $inherits;
+
+    while (!empty($remnant)) {
+        // find role with no dependencies
+        $role = array_search(array(), $remnant);
+        if(!$role) {
+            var_dump($remnant);
+            return $inherit_order;
+        }        
+        
+        // remove the role from the remnant
+        unset($remnant[$role]);
+
+        // push role onto array
+        $inherit_order[$role] = $inherits[$role];
+
+        // snip role from all other role dependencies (i.e. it's now properly in
+        // the list before them, it doesn't need to be considered anymore)
+        foreach ($remnant as $inherit_role => $dependencies) {
+            $remnant[$inherit_role] = array_diff($dependencies, array($role));
+        }
+    }
+
+    return $inherit_order;
+}
+
+function nci_user_roles_merge_inherits(array $inherits, $perms){
+    // for each role, copy in permissions from all inherited roles
+    foreach($inherits as $role => $parents) {
+        foreach($parents as $parent_role) {
+            $perms[$role] += $perms[$parent_role];
+        }
+    }
+    
+    return $perms;
 }
 
 function nci_user_roles_get_base_inherits(){
@@ -391,7 +429,6 @@ function _create_site_manager() {
  */
 function nci_user_roles_clear_permissions(array $roles = array(), 
         array $blacklist = array()) {
-    var_dump($blacklist);
     
     if(empty($roles)) $roles = user_roles();
     
@@ -415,19 +452,14 @@ function nci_user_roles_clear_permissions(array $roles = array(),
                 continue;
             }
 
-            drupal_set_message("$role_name: CLEARING PERMISSIONS: " .
-                    implode(', ', $permission_names));
+            $reject_list = implode(", \n", $permission_names);
+            drupal_set_message(
+                    "Clearing non-authorized permissions for $role_name:\n$reject_list\n", 'warning');
             
-            // clear EVERYTHING not whitelisted.
+            // clear blacklisted permissions
             user_role_revoke_permissions($rid, $permission_names);
         }
     }
-}
-
-function nci_user_roles_init() {
-    //$permissions = nci_user_roles_get_permissions();
-    
-    //dsm($permissions, 'module permissions');
 }
 
 function nci_user_roles_get_permissions() {
