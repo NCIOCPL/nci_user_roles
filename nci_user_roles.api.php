@@ -36,4 +36,21 @@ function hook_role_inheritance() {
     );
 }
 
+/**
+ * Hook to allow instantiating modules to rename the roles from the original
+ * CBIIT-declared names to names that fit within the active system's scheme.
+ * A best attempt will be made to resolve overlapping renames by renaming roles
+ * to be occupied by another first.
+ * 
+ * This renaming is done after all role inheritence has been determined, so 
+ * modules implementing the various hooks should use the CBIIT role names to
+ * declare permissions, then rename them afterwards using this hook.
+ * 
+ * @return array An array mapping original role names (as keys) to new role
+ *               names (as values)
+ */
+function hook_role_rename() {
+    return array('content approver' => 'content editor');
+}
+
 ?>
