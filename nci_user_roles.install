@@ -17,11 +17,11 @@ function nci_user_roles_disable() {
     
 }
 
-function nci_user_roles_set_permissions(){
+function nci_user_roles_set_permissions($verbose = FALSE){
     $role_map = nci_user_roles_get_defaults();
     $role_permissions = nci_user_roles_prepare_permissions($role_map);
 
-    nci_user_roles_update_roles($role_permissions);
+    nci_user_roles_update_roles($role_permissions, $verbose);
 }
 
 function nci_user_roles_get_defaults() {
@@ -211,7 +211,7 @@ function get_site_manager_permissions() {
  *                                role_name => function_name, where the function
  *                                return a list of permission / value pairs.
  */
-function nci_user_roles_update_roles(array $role_map) {
+function nci_user_roles_update_roles(array $role_map, $verbose = FALSE) {
     $known_permissions = nci_user_roles_get_permissions();
     
     foreach ($role_map as $role_name => $permissions) {
@@ -262,9 +262,14 @@ function nci_user_roles_update_roles(array $role_map) {
         // find the permissions to clear (e. g. the ones that are set that are
         // not in the desired list)
         $bad_perms = array_diff_key($set_perms, $good_perms);
+        
+        $action_taken = false;
+        
         if (!empty($bad_perms)) {
             // pass the valid permissions along to clear the outlying permissions
             nci_user_roles_clear_permissions(array($role_name), $bad_perms);
+            
+            $action_taken = true;
         }
 
         // Grant permissions to the role
@@ -278,6 +283,12 @@ function nci_user_roles_update_roles(array $role_map) {
                     WATCHDOG_NOTICE);
             drupal_set_message(
                     "Setting $perm_count permissions for $role_name.");
+            
+            $action_taken = true;
+        }
+        
+        if($verbose && !$action_taken) {
+            drupal_set_message("No permission updates for $role_name");
         }
     }
 }
