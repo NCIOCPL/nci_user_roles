@@ -28,8 +28,8 @@ function nci_user_roles_get_defaults() {
     return array(
         'anonymous user' => 'get_anonymous_user_permissions',
         'authenticated user' => 'get_authenticated_user_permissions',
+        'content author' => 'get_content_author_permissions',
         'content editor' => 'get_content_editor_permissions',
-        'content approver' => 'get_content_approver_permissions',
         'site moderator' => 'get_site_moderator_permissions',
         'advanced content editor' => 'get_advanced_content_editor_permissions',
         'site manager' => 'get_site_manager_permissions',
@@ -60,15 +60,11 @@ function get_authenticated_user_permissions() {
     return $perms;
 }
 
-function get_content_editor_permissions() {
+function get_content_author_permissions() {
     $perms = array(
         'use text format full_html' => TRUE,
         'create url aliases' => TRUE,
         'administer redirects' => TRUE,
-        'access relations' => TRUE,
-        'create relations' => TRUE,
-        'edit relations' => TRUE,
-        'delete relations' => TRUE,
         'access administration pages' => TRUE,
         'view the administration theme' => TRUE,
         'access toolbar' => TRUE,
@@ -126,7 +122,7 @@ function get_content_editor_permissions() {
     return $perms;
 }
 
-function get_content_approver_permissions() {
+function get_content_editor_permissions() {
     $perms = array(
         /*'moderate all content from draft to archive' => TRUE,
         'moderate all content from review to published' => TRUE,
@@ -509,9 +505,9 @@ function nci_user_roles_get_base_inherits(){
     return array(
         'anonymous user' => array(),
         'authenticated user' => array('anonymous user'),
-        'content editor' => array('authenticated user'),
-        'content approver' => array('content editor'),
-        'site moderator' => array('content approver'),
+        'content author' => array('authenticated user'),
+        'content editor' => array('content author'),
+        'site moderator' => array('content editor'),
         'advanced content editor' => array('site moderator'),
         'site manager' => array('advanced content editor'),
     );
