@@ -63,7 +63,7 @@ function get_authenticated_user_permissions() {
 function get_content_author_permissions() {
     $perms = array(
         'use text format full_html' => TRUE,
-        'create url aliases' => TRUE,
+        'create url aliases' => FALSE, // Changed 6/3/13 -> Authors can't control a URL
         'administer redirects' => TRUE,
         'access administration pages' => TRUE,
         'view the administration theme' => TRUE,
@@ -150,6 +150,7 @@ function get_advanced_content_editor_permissions() {
         'administer views' => true,
         'administer nodes' => true,
         'administer url aliases' => true,
+        'create url aliases' => TRUE, // Changed 6/3/13 -> Adv users CAN control a URL
         'display site building menu' => true,
         'display site configuration menu' => true,
         /*'create general content' => TRUE, // Grant permission
