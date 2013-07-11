@@ -65,7 +65,6 @@ function get_content_author_permissions() {
         'use text format full_html' => TRUE,
         'create url aliases' => FALSE, // Changed 6/3/13 -> Authors can't control a URL
         'administer redirects' => TRUE,
-        'access administration pages' => TRUE,
         'view the administration theme' => TRUE,
         'access toolbar' => TRUE,
         'access workbench' => TRUE,
@@ -80,7 +79,6 @@ function get_content_author_permissions() {
         'moderate content from needs_review to draft' => TRUE,
         'moderate content from published to draft' => TRUE,
         'moderate content from private archive to draft' => TRUE,*/
-        'access content overview' => TRUE,
         'view own unpublished content' => TRUE,
         'view revisions' => TRUE,
         'revert revisions' => TRUE,
@@ -134,6 +132,8 @@ function get_content_editor_permissions() {
 
 function get_site_moderator_permissions() {
     $perms = array(
+        'access content overview' => TRUE,
+        'access administration pages' => TRUE,
         'access all webform results' => TRUE,
         'administer comments' => TRUE,
         'administer users' => TRUE,
