@@ -63,7 +63,7 @@ function get_authenticated_user_permissions() {
 function get_content_author_permissions() {
     $perms = array(
         'use text format full_html' => TRUE,
-        'create url aliases' => FALSE, // Changed 6/3/13 -> Authors can't control a URL
+        //'create url aliases' => FALSE, // Changed 6/3/13 -> Authors can't control a URL
         'administer redirects' => TRUE,
         'view the administration theme' => TRUE,
         'access toolbar' => TRUE,
