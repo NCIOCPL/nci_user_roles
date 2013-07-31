@@ -554,8 +554,7 @@ function nci_user_roles_clear_permissions(array $roles = array(),
                 array('@role_name' => $role_name, '@reject_list' => $reject_list),
                 WATCHDOG_NOTICE);
             drupal_set_message(
-                "Clearing $perm_count non-authorized permissions for $role_name.",
-                'warning');
+                "Clearing $perm_count non-authorized permissions for $role_name.");
             
             // clear blacklisted permissions
             user_role_revoke_permissions($rid, $permission_names);
