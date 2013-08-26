@@ -14,7 +14,7 @@ function nci_user_roles_drush_command() {
             'drush user-roles-permissions-refresh' => 'Queries all enabled modules and sets the descovered user role permissions.',
         ),
         'aliases' => array('urpr'),
-        'bootstrap' => DRUSH_BOOTSTRAP_FULL, 
+        'bootstrap' => DRUPAL_BOOTSTRAP_FULL, 
         'drupal dependencies' => array('nci_user_roles'),
     );
 
