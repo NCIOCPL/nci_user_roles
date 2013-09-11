@@ -153,6 +153,8 @@ function get_advanced_content_editor_permissions() {
         'create url aliases' => TRUE, // Changed 6/3/13 -> Adv users CAN control a URL
         'display site building menu' => true,
         'display site configuration menu' => true,
+        'manipulate queues' => TRUE,
+        'manipulate all queues' => TRUE,
         /*'create general content' => TRUE, // Grant permission
         'delete any general content' => TRUE, // Grant permission
         'create site home content' => TRUE,
@@ -195,6 +197,7 @@ function get_advanced_content_editor_permissions() {
 function get_site_manager_permissions() {
     $perms = array(
         'administer performance' => TRUE,
+        'administer nodequeue' => true,
     );
     
     return $perms;
