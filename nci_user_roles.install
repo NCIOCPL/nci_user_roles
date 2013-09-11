@@ -137,6 +137,7 @@ function get_site_moderator_permissions() {
         'access all webform results' => TRUE,
         'administer comments' => TRUE,
         'administer users' => TRUE,
+        'administer search_api' => TRUE,
     );
 
     return $perms;
