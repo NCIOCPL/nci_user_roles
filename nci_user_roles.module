@@ -22,7 +22,7 @@ function nci_user_roles_get_permissions() {
 /**
  * Builds an array of content type permissions, given an array of types and
  * access levels desired
- * 
+ *
  * @param array $types  An array of content type names
  * @param array $access An array of desired access, denoted by the terms
  *                      'edit own', 'edit any', 'delete own', delete any', and
@@ -45,20 +45,20 @@ function nci_user_roles_build_content_type_permissions(array $types,
 
                     break;
                 default:
-                    continue;
+                    break;
             }
-            
+
             $type_perms[$perm_string] = true;
         }
     }
-    
+
     return $type_perms;
 }
 
 /**
  * Builds an array of content type permissions, given an array of types and
  * access levels desired
- * 
+ *
  * @param array $types  An array of content type names
  * @param array $access An array of desired access, denoted by the terms
  *                      'edit own', 'edit any', 'delete own', delete any', and
@@ -71,14 +71,14 @@ function nci_user_roles_build_taxonomy_permissions(array $vocabs,
     foreach($vocabs as $vocab_name) {
         // attempt to lookup the given vocabulary
         $vocab = taxonomy_vocabulary_machine_name_load($vocab_name);
-        
+
         if(!$vocab) {
             drupal_set_message("Cannot load vocabulary $vocab_name.", 'warning');
             continue;
         }
-        
+
         $vid = $vocab->vid;
-        
+
         foreach($access_levels as $level) {
             $perm_string = '';
             switch ($level) {
@@ -88,13 +88,13 @@ function nci_user_roles_build_taxonomy_permissions(array $vocabs,
 
                     break;
                 default:
-                    continue;
+                    break;
             }
-            
+
             $type_perms[$perm_string] = true;
         }
     }
-    
+
     return $type_perms;
 }
 
