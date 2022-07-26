@@ -45,7 +45,7 @@ function nci_user_roles_build_content_type_permissions(array $types,
 
                     break;
                 default:
-                  break;
+                    break;
             }
 
             $type_perms[$perm_string] = true;
@@ -88,7 +88,7 @@ function nci_user_roles_build_taxonomy_permissions(array $vocabs,
 
                     break;
                 default:
-                  break;
+                break;
             }
 
             $type_perms[$perm_string] = true;
